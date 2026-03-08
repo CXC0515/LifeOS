@@ -44,9 +44,6 @@ final class DashboardViewModel: ObservableObject {
         }
     }
     
-    /// 月视图渲染项
-    @Published var monthlyRenderItems: [MonthlyRenderItem] = []
-    
     // MARK: - Vision 视图数据
     
     /// 雷达图数据
@@ -107,19 +104,11 @@ final class DashboardViewModel: ObservableObject {
             dailyRenderItems = calculationService.calculateDailyLayout(tasks: dayTasks)
             
         case .multiDay:
-            // 多日视图：从当前选中日期开始，连续两天的布局
+            // 两日视图：从当前选中日期开始，连续两天的布局
             multiDayRenderItems = calculationService.calculateMultiDayLayout(
                 startDate: currentDate,
                 dayCount: 2,
                 allTasks: allTasks
-            )
-            
-        case .month:
-            // 月视图：获取当月任务并计算布局
-            let monthTasks = filterTasksForMonth(allTasks, monthDate: currentDate)
-            monthlyRenderItems = calculationService.calculateMonthlyLayout(
-                tasks: monthTasks,
-                monthDate: currentDate
             )
         }
     }
@@ -168,14 +157,4 @@ final class DashboardViewModel: ObservableObject {
         return tasks.filter { calendar.isDate($0.startTime, inSameDayAs: date) }
     }
     
-    /// 过滤指定月的任务
-    private func filterTasksForMonth(_ tasks: [TaskItem], monthDate: Date) -> [TaskItem] {
-        let calendar = Calendar.current
-        guard let monthInterval = calendar.dateInterval(of: .month, for: monthDate) else {
-            return []
-        }
-        return tasks.filter { task in
-            task.startTime >= monthInterval.start && task.startTime < monthInterval.end
-        }
-    }
 }

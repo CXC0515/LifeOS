@@ -20,51 +20,93 @@ struct ScoreTrendView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Score Trend (30 Days)")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-            
-            Chart(recentHistory, id: \.date) { item in
-                // 1. 区域填充 (渐变)
-                AreaMark(
-                    x: .value("Date", item.date, unit: .day),
-                    y: .value("Score", item.score)
-                )
-                .interpolationMethod(.catmullRom)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [theme.currentTheme.p1.opacity(0.3), theme.currentTheme.p1.opacity(0.0)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+            // 标题行
+            HStack {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.currentTheme.p1)
+                Text("积分趋势 (30天)")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.primary)
                 
-                // 2. 线条
-                LineMark(
-                    x: .value("Date", item.date, unit: .day),
-                    y: .value("Score", item.score)
-                )
-                .interpolationMethod(.catmullRom)
-                .lineStyle(StrokeStyle(lineWidth: 2))
-                .foregroundStyle(theme.currentTheme.p1)
-            }
-            .chartYScale(domain: .automatic(includesZero: false)) // 自动缩放Y轴，不强制包含0
-            .chartXAxis {
-                AxisMarks(values: .stride(by: .day, count: 7)) { value in
-                    AxisGridLine()
-                    AxisTick()
-                    AxisValueLabel(format: .dateTime.month().day())
+                Spacer()
+                
+                // 最新积分
+                if let latest = recentHistory.last {
+                    Text("\(latest.score)")
+                        .font(.title3.bold().monospacedDigit())
+                        .foregroundStyle(theme.currentTheme.p1)
                 }
             }
-            .frame(height: 200)
-            .padding(.horizontal)
+            .padding(.horizontal, 16)
+            
+            if recentHistory.isEmpty {
+                ContentUnavailableView("暂无积分记录", systemImage: "chart.line.flattrend.xyaxis")
+                    .frame(height: 160)
+            } else {
+                Chart(recentHistory, id: \.date) { item in
+                    // 区域填充 (渐变)
+                    AreaMark(
+                        x: .value("Date", item.date, unit: .day),
+                        y: .value("Score", item.score)
+                    )
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                theme.currentTheme.p1.opacity(0.3),
+                                theme.currentTheme.p1.opacity(0.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    
+                    // 线条
+                    LineMark(
+                        x: .value("Date", item.date, unit: .day),
+                        y: .value("Score", item.score)
+                    )
+                    .interpolationMethod(.catmullRom)
+                    .lineStyle(StrokeStyle(lineWidth: 2.5))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [theme.currentTheme.p1, theme.currentTheme.p2],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                }
+                .chartYScale(domain: .automatic(includesZero: false))
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .day, count: 7)) { _ in
+                        AxisGridLine()
+                            .foregroundStyle(Color.gray.opacity(0.1))
+                        AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                            .font(.system(size: 9))
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) { _ in
+                        AxisGridLine()
+                            .foregroundStyle(Color.gray.opacity(0.08))
+                        AxisValueLabel()
+                            .font(.system(size: 9))
+                    }
+                }
+                .frame(height: 180)
+                .padding(.horizontal, 16)
+            }
         }
-        .padding(.vertical)
+        .padding(.vertical, 16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(theme.currentTheme.pageBackground)
-                .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 20)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
         )
     }
 }

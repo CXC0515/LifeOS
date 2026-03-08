@@ -10,34 +10,51 @@ import SwiftUI
 struct RadarChartView: View {
     var data: [RadarChartData]
     @ObservedObject var theme = ThemeManager.shared
+    @State private var animationProgress: CGFloat = 0
     
     var body: some View {
-        VStack {
-            ZStack {
-                // 1. 背景网格 (六边形)
-                RadarGrid()
-                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+        ZStack {
+            // 1. 背景网格 (六边形)
+            RadarGrid()
+                .stroke(Color.gray.opacity(0.15), lineWidth: 0.8)
+            
+            // 2. 数据多边形 (带动画)
+            if !data.isEmpty {
+                RadarPolygon(data: data, progress: animationProgress)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                theme.currentTheme.p1.opacity(0.35),
+                                theme.currentTheme.p2.opacity(0.15)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
                 
-                // 2. 数据多边形
-                if !data.isEmpty {
-                    RadarPolygon(data: data)
-                        .fill(theme.currentTheme.p1.opacity(0.3))
-                    
-                    RadarPolygon(data: data)
-                        .stroke(theme.currentTheme.p1, lineWidth: 2)
-                }
+                RadarPolygon(data: data, progress: animationProgress)
+                    .stroke(
+                        LinearGradient(
+                            colors: [theme.currentTheme.p1, theme.currentTheme.p2],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 2
+                    )
                 
-                // 3. 属性标签 & 图标
-                RadarLabels(data: data)
+                // 数据点高光
+                RadarDots(data: data, progress: animationProgress)
             }
-            .frame(height: 240)
-            .padding()
+            
+            // 3. 属性标签 & 图标
+            RadarLabels(data: data)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(theme.currentTheme.pageBackground)
-                .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
-        )
+        .padding(30)
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.8)) {
+                animationProgress = 1.0
+            }
+        }
     }
 }
 
@@ -88,6 +105,12 @@ struct RadarGrid: Shape {
 
 struct RadarPolygon: Shape {
     var data: [RadarChartData]
+    var progress: CGFloat = 1.0
+    
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
     
     func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -96,12 +119,9 @@ struct RadarPolygon: Shape {
         let center = CGPoint(x: rect.midX, y: rect.midY)
         let radius = min(rect.width, rect.height) / 2
         
-        // 确保数据按 AttributeType 顺序排列 (StatsService 已经保证了，但这里为了安全可以按 AttributeType.allCases 索引)
-        // 假设 data 是按顺序的 (Intellect, Strength, ...)
-        
         for (i, item) in data.enumerated() {
             let angle = CGFloat(i) * 60 * .pi / 180 - .pi / 2
-            let val = CGFloat(item.value) // 0.0 - 1.0
+            let val = CGFloat(item.value) * progress
             let r = radius * val
             
             let point = CGPoint(
@@ -121,6 +141,35 @@ struct RadarPolygon: Shape {
     }
 }
 
+/// 雷达图数据点高光圆
+struct RadarDots: View {
+    var data: [RadarChartData]
+    var progress: CGFloat
+    @ObservedObject var theme = ThemeManager.shared
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            let radius = min(geometry.size.width, geometry.size.height) / 2
+            
+            ForEach(0..<data.count, id: \.self) { i in
+                let item = data[i]
+                let angle = CGFloat(i) * 60 * .pi / 180 - .pi / 2
+                let val = CGFloat(item.value) * progress
+                let r = radius * val
+                let x = center.x + r * cos(angle)
+                let y = center.y + r * sin(angle)
+                
+                Circle()
+                    .fill(item.attribute.color)
+                    .frame(width: 7, height: 7)
+                    .shadow(color: item.attribute.color.opacity(0.4), radius: 4)
+                    .position(x: x, y: y)
+            }
+        }
+    }
+}
+
 struct RadarLabels: View {
     var data: [RadarChartData]
     
@@ -132,17 +181,16 @@ struct RadarLabels: View {
             ForEach(0..<data.count, id: \.self) { i in
                 let item = data[i]
                 let angle = CGFloat(i) * 60 * .pi / 180 - .pi / 2
-                // 标签稍微靠外一点
-                let labelRadius = radius + 25
+                let labelRadius = radius + 22
                 let x = center.x + labelRadius * cos(angle)
                 let y = center.y + labelRadius * sin(angle)
                 
                 VStack(spacing: 2) {
                     Image(systemName: item.attribute.icon)
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundStyle(item.attribute.color)
-                    Text("\(item.rawValue)")
-                        .font(.system(size: 10, weight: .bold))
+                    Text(item.attribute.displayName)
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
                 .position(x: x, y: y)

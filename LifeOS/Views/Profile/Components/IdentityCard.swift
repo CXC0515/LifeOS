@@ -1,3 +1,10 @@
+//
+//  IdentityCard.swift
+//  LifeOS
+//
+//  身份卡片：头像、昵称、编辑按钮、活跃天数进度条
+//
+
 import SwiftUI
 import SwiftData
 import PhotosUI
@@ -10,12 +17,15 @@ struct IdentityCard: View {
     // UI Constants
     private let cornerRadius: CGFloat = 24
     
+    /// 活跃天数目标（可以后续做成动态的）
+    private let activeDaysGoal: Int = 365
+    
     var body: some View {
         ZStack {
             // Glass Background
             glassBackground
             
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
                 // Top Row: Avatar & Info
                 HStack(spacing: 24) {
                     // Avatar (Click to Preview)
@@ -74,36 +84,10 @@ struct IdentityCard: View {
                     
                     // Info
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack(alignment: .center, spacing: 8) {
-                            Text(user.nickname)
-                                .font(.title)
-                                .fontWeight(.bold)
-                                .foregroundStyle(.primary)
-                            
-                            // Level Badge
-                            Text("Lv.\(user.level)")
-                                .font(.system(size: 12, weight: .black))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Capsule().fill(Color.yellow))
-                                .foregroundStyle(.black)
-                                .shadow(color: .yellow.opacity(0.3), radius: 4, x: 0, y: 2)
-                        }
-                        
-                        // Achievement
-                        if let achievement = user.selectedAchievement {
-                            HStack(spacing: 6) {
-                                Image(systemName: "medal.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                                Text(achievement)
-                                    .font(.caption.bold())
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Capsule().fill(.ultraThinMaterial))
-                        }
+                        Text(user.nickname)
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundStyle(.primary)
                         
                         // Edit Button
                         Button {
@@ -120,39 +104,8 @@ struct IdentityCard: View {
                     Spacer()
                 }
                 
-                // Bottom Row: Exp Bar
-                VStack(spacing: 8) {
-                    HStack {
-                        Text("当前经验")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text("\(user.currentExp) / \(user.nextLevelExp)")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundStyle(.primary)
-                    }
-                    
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.gray.opacity(0.1))
-                            
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: calculateProgressWidth(total: geometry.size.width))
-                                .shadow(color: .blue.opacity(0.3), radius: 2, x: 0, y: 1)
-                        }
-                    }
-                    .frame(height: 10)
-                }
+                // Bottom: 活跃天数进度条（紧凑美观）
+                activeDaysBar
             }
             .padding(28)
         }
@@ -161,9 +114,50 @@ struct IdentityCard: View {
         }
     }
     
-    private func calculateProgressWidth(total: CGFloat) -> CGFloat {
-        let progress = Double(user.currentExp) / Double(user.nextLevelExp)
-        return total * CGFloat(min(max(progress, 0), 1))
+    // MARK: - 活跃天数进度条
+    
+    private var activeDaysBar: some View {
+        VStack(spacing: 6) {
+            HStack {
+                HStack(spacing: 5) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.orange)
+                    Text("活跃天数")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                
+                Spacer()
+                
+                Text("\(user.daysActive) 天")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundStyle(.primary)
+            }
+            
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.orange.opacity(0.1))
+                    
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.orange.opacity(0.6), Color.orange],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: calculateActiveDaysWidth(total: geometry.size.width))
+                }
+            }
+            .frame(height: 6)
+        }
+    }
+    
+    private func calculateActiveDaysWidth(total: CGFloat) -> CGFloat {
+        let progress = Double(user.daysActive) / Double(activeDaysGoal)
+        return total * CGFloat(min(max(progress, 0.02), 1)) // min 2% so bar is always visible
     }
     
     // Reusing Glass Effect
@@ -197,7 +191,7 @@ func createImage(from data: Data) -> Image? {
     return nil
 }
 
-// Edit Sheet with Avatar & Achievement
+// Edit Sheet with Avatar (Achievement section removed)
 struct EditProfileSheet: View {
     @Bindable var user: UserProfile
     @Environment(\.dismiss) var dismiss
@@ -205,7 +199,6 @@ struct EditProfileSheet: View {
     
     @State private var newNickname: String = ""
     @State private var selectedPhoto: PhotosPickerItem?
-    @State private var selectedAchievement: String = ""
     
     var body: some View {
         NavigationStack {
@@ -251,21 +244,6 @@ struct EditProfileSheet: View {
                 Section("个人信息") {
                     TextField("昵称", text: $newNickname)
                 }
-                
-                // 3. 成就佩戴
-                Section("佩戴成就") {
-                    Picker("选择成就", selection: $selectedAchievement) {
-                        Text("无").tag("")
-                        ForEach(user.unlockedAchievements, id: \.self) { achievement in
-                            Text(achievement).tag(achievement)
-                        }
-                    }
-                    #if os(iOS)
-                    .pickerStyle(.navigationLink)
-                    #else
-                    .pickerStyle(.menu)
-                    #endif
-                }
             }
             .navigationTitle("编辑资料")
             #if os(iOS)
@@ -281,16 +259,12 @@ struct EditProfileSheet: View {
                         if !newNickname.isEmpty {
                             user.nickname = newNickname
                         }
-                        // 保存成就 (允许为空)
-                        user.selectedAchievement = selectedAchievement.isEmpty ? nil : selectedAchievement
-                        
                         dismiss()
                     }
                 }
             }
             .onAppear {
                 newNickname = user.nickname
-                selectedAchievement = user.selectedAchievement ?? ""
             }
         }
         .presentationDetents([.medium, .large])

@@ -33,7 +33,7 @@ struct ProfileView: View {
                             
                             MenuLinkRow(
                                 title: "分类管理",
-                                icon: "folder.fill",
+                                icon: "square.grid.2x2.fill",
                                 color: .blue,
                                 destination: CategoryManagerView()
                             )
@@ -43,6 +43,13 @@ struct ProfileView: View {
                                 icon: "tag.fill",
                                 color: .orange,
                                 destination: TagManagerView()
+                            )
+                            
+                            MenuLinkRow(
+                                title: "文件管理",
+                                icon: "folder.fill",
+                                color: .cyan,
+                                destination: FileManagerView()
                             )
                         }
                         .padding(.horizontal)

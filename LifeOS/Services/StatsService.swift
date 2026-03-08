@@ -16,7 +16,7 @@ enum AttributeType: String, CaseIterable, Codable {
     case intellect = "Intellect"   // 智力
     case strength = "Strength"     // 体力
     case charm = "Charm"           // 魅力
-    case wealth = "Wealth"         // 财富
+    case execution = "Execution"   // 执行
     case creativity = "Creativity" // 创造
     case willpower = "Willpower"   // 毅力
     
@@ -25,7 +25,7 @@ enum AttributeType: String, CaseIterable, Codable {
         case .intellect: return "智力"
         case .strength: return "体力"
         case .charm: return "魅力"
-        case .wealth: return "财富"
+        case .execution: return "执行"
         case .creativity: return "创造"
         case .willpower: return "毅力"
         }
@@ -36,7 +36,7 @@ enum AttributeType: String, CaseIterable, Codable {
         case .intellect: return "brain.head.profile"
         case .strength: return "figure.run"
         case .charm: return "sparkles"
-        case .wealth: return "dollarsign.circle"
+        case .execution: return "bolt.fill"
         case .creativity: return "paintbrush"
         case .willpower: return "mountain.2"
         }
@@ -47,7 +47,7 @@ enum AttributeType: String, CaseIterable, Codable {
         case .intellect: return .blue
         case .strength: return .red
         case .charm: return .pink
-        case .wealth: return .yellow
+        case .execution: return .orange
         case .creativity: return .purple
         case .willpower: return .green
         }
@@ -106,7 +106,7 @@ final class StatsService {
             .intellect: user.attrIntellect,
             .strength: user.attrStrength,
             .charm: user.attrCharm,
-            .wealth: user.attrWealth,
+            .execution: user.attrExecution,
             .creativity: user.attrCreativity,
             .willpower: user.attrWillpower
         ]

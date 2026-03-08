@@ -13,9 +13,6 @@ enum EchoMode: String, CaseIterable {
     /// 单日时间轴
     case day = "单日"
     
-    /// 多日时间轴（双日视图）
-    case multiDay = "多日"
-    
-    /// 月历视图
-    case month = "月"
+    /// 两日时间轴
+    case multiDay = "两日"
 }

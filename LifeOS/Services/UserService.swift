@@ -38,47 +38,7 @@ final class UserService {
         user.nickname = name
     }
     
-    // MARK: - 3. 经验与等级系统
-    /// 增加经验值并检查升级
-    /// - Returns: 如果升级了，返回 true
-    func addExp(_ amount: Int, context: ModelContext) -> Bool {
-        guard amount > 0 else { return false }
-        
-        let user = getCurrentUser(context: context)
-        user.currentExp += amount
-        user.totalEarned += amount // 总积分也同步增加作为历史记录
-        
-        // 检查升级逻辑
-        var didLevelUp = false
-        while user.currentExp >= user.nextLevelExp {
-            user.currentExp -= user.nextLevelExp
-            user.level += 1
-            
-            // 升级后，下一级所需经验增加 (简单的成长曲线：每级增加 20%)
-            user.nextLevelExp = Int(Double(user.nextLevelExp) * 1.2)
-            
-            didLevelUp = true
-        }
-        
-        return didLevelUp
-    }
-    
-    // MARK: - 4. 成就系统
-    func unlockAchievement(_ name: String, context: ModelContext) {
-        let user = getCurrentUser(context: context)
-        if !user.unlockedAchievements.contains(name) {
-            user.unlockedAchievements.append(name)
-        }
-    }
-    
-    func equipAchievement(_ name: String, context: ModelContext) {
-        let user = getCurrentUser(context: context)
-        if user.unlockedAchievements.contains(name) {
-            user.selectedAchievement = name
-        }
-    }
-    
-    // MARK: - 5. 统计更新
+    // MARK: - 3. 统计更新
     func incrementCompletedTasks(context: ModelContext) {
         let user = getCurrentUser(context: context)
         user.completedTaskCount += 1

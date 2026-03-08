@@ -25,14 +25,15 @@ struct TagManagerView: View {
     @State private var tagToDelete: TaskTag?
     @State private var showDeleteAlert = false
     
-    // 拖拽高亮状态
-    @State private var activeDropTarget: AttributeType?
+    // 能力绑定：当前选中的标签
+    @State private var selectedTag: TaskTag?
     
     let tagColumns = [GridItem(.adaptive(minimum: 100), spacing: 12)]
     
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
+                // MARK: - 标签池
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("标签池 (Tag Pool)")
@@ -41,7 +42,7 @@ struct TagManagerView: View {
                         
                         Spacer()
                         
-                        Text("长按拖拽标签到下方能力列完成绑定")
+                        Text("点击标签可编辑能力绑定")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
@@ -51,10 +52,12 @@ struct TagManagerView: View {
                         ForEach(tags) { tag in
                             TagGridCell(
                                 tag: tag,
+                                isSelected: selectedTag?.id == tag.id,
                                 tagToEdit: $tagToEdit,
                                 tagToDelete: $tagToDelete,
                                 showDeleteAlert: $showDeleteAlert,
                                 hasAttributes: !TaskService.shared.attributeTypes(for: tag).isEmpty,
+                                onSelect: { selectedTag = tag },
                                 onUnlinkAll: { unlinkAllAttributes(for: tag) }
                             )
                         }
@@ -82,35 +85,34 @@ struct TagManagerView: View {
                 Divider()
                     .padding(.horizontal)
                 
+                // MARK: - 能力绑定区域（左右双列）
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("能力方向绑定 (Ability Columns)")
+                    Text("标签 — 能力绑定")
                         .font(.headline)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal)
                     
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(alignment: .top, spacing: 16) {
-                            ForEach(AttributeType.allCases, id: \.self) { attr in
-                                AttributeColumnView(
-                                    attribute: attr,
-                                    tags: tagsForAttribute(attr),
-                                    isActive: activeDropTarget == attr,
-                                    onUnlink: { tag in
-                                        unlink(tag, from: attr)
-                                    }
-                                )
-                                .dropDestination(for: String.self) { items, _ in
-                                    handleDrop(items: items, to: attr)
-                                } isTargeted: { isTargeted in
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        activeDropTarget = isTargeted ? attr : nil
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.bottom, 40)
+                    HStack(alignment: .top, spacing: 0) {
+                        // 左列：标签选择列表
+                        tagSelectionList
+                        
+                        Divider()
+                        
+                        // 右列：能力勾选列表
+                        abilityCheckList
                     }
+                    .frame(minHeight: 300)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white.opacity(0.04))
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                    )
+                    .padding(.horizontal)
                 }
             }
             .padding(.vertical)
@@ -136,6 +138,9 @@ struct TagManagerView: View {
             Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
                 if let tag = tagToDelete {
+                    if selectedTag?.id == tag.id {
+                        selectedTag = nil
+                    }
                     modelContext.delete(tag)
                     tagToDelete = nil
                 }
@@ -145,40 +150,179 @@ struct TagManagerView: View {
         }
     }
     
-    // MARK: - Logic
+    // MARK: - 左列：标签选择列表
     
-    private func tagsForAttribute(_ attribute: AttributeType) -> [TaskTag] {
-        tags.filter { tag in
-            TaskService.shared.attributeTypes(for: tag).contains(attribute)
+    private var tagSelectionList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("选择标签")
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 8)
+            
+            ScrollView {
+                VStack(spacing: 4) {
+                    ForEach(tags) { tag in
+                        let isSelected = selectedTag?.id == tag.id
+                        let boundAttributes = TaskService.shared.attributeTypes(for: tag)
+                        
+                        Button {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                selectedTag = tag
+                            }
+                            triggerFeedback()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(Color(hex: tag.colorHex))
+                                    .frame(width: 8, height: 8)
+                                
+                                Text(tag.name)
+                                    .font(.subheadline)
+                                    .fontWeight(isSelected ? .semibold : .regular)
+                                    .lineLimit(1)
+                                
+                                Spacer(minLength: 4)
+                                
+                                // 显示已绑定能力数量
+                                if !boundAttributes.isEmpty {
+                                    Text("\(boundAttributes.count)")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 18, height: 18)
+                                        .background(Circle().fill(ThemeManager.shared.currentTheme.p2))
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(isSelected
+                                          ? ThemeManager.shared.currentTheme.p2.opacity(0.15)
+                                          : Color.clear)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(isSelected
+                                            ? ThemeManager.shared.currentTheme.p2.opacity(0.4)
+                                            : Color.clear, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 12)
+            }
         }
+        .frame(minWidth: 140, idealWidth: 160)
     }
     
-    private func handleDrop(items: [String], to attribute: AttributeType) -> Bool {
-        guard let idString = items.first,
-              let uuid = UUID(uuidString: idString),
-              let tag = tags.first(where: { $0.id == uuid }) else {
-            return false
+    // MARK: - 右列：能力勾选列表
+    
+    private var abilityCheckList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let tag = selectedTag {
+                // 标题：当前标签名
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color(hex: tag.colorHex))
+                        .frame(width: 10, height: 10)
+                    Text("「\(tag.name)」的能力绑定")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 8)
+                
+                let currentAttributes = TaskService.shared.attributeTypes(for: tag)
+                
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(AttributeType.allCases, id: \.self) { attr in
+                            let isBound = currentAttributes.contains(attr)
+                            
+                            Button {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
+                                    if isBound {
+                                        TaskService.shared.unlinkTag(tag, from: attr, context: modelContext)
+                                    } else {
+                                        TaskService.shared.linkTag(tag, to: attr, context: modelContext)
+                                    }
+                                }
+                                triggerFeedback()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    // 能力图标
+                                    ZStack {
+                                        Circle()
+                                            .fill(attr.color.opacity(isBound ? 0.2 : 0.08))
+                                            .frame(width: 36, height: 36)
+                                        
+                                        Image(systemName: attr.icon)
+                                            .font(.system(size: 15))
+                                            .foregroundStyle(attr.color)
+                                    }
+                                    
+                                    // 能力名称
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(attr.displayName)
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(.primary)
+                                        
+                                        Text(attr.rawValue)
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    // 勾选状态
+                                    Image(systemName: isBound ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 22))
+                                        .foregroundStyle(isBound ? attr.color : Color.gray.opacity(0.3))
+                                        .symbolEffect(.bounce, value: isBound)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(isBound ? attr.color.opacity(0.06) : Color.clear)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 12)
+                }
+            } else {
+                // 未选中标签时的占位
+                VStack(spacing: 12) {
+                    Spacer()
+                    Image(systemName: "arrow.left.circle")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.quaternary)
+                    Text("选择左侧标签\n编辑能力绑定")
+                        .font(.subheadline)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            }
         }
-        
-        withAnimation(.spring) {
-            TaskService.shared.linkTag(tag, to: attribute, context: modelContext)
-        }
-        
-        triggerFeedback()
-        
-        return true
+        .frame(maxWidth: .infinity)
     }
+    
+    // MARK: - Logic 
     
     private func unlinkAllAttributes(for tag: TaskTag) {
         withAnimation {
             TaskService.shared.unlinkAllAttributes(for: tag, context: modelContext)
-        }
-        triggerFeedback()
-    }
-    
-    private func unlink(_ tag: TaskTag, from attribute: AttributeType) {
-        withAnimation {
-            TaskService.shared.unlinkTag(tag, from: attribute, context: modelContext)
         }
         triggerFeedback()
     }
@@ -194,152 +338,6 @@ struct TagManagerView: View {
 
 
 // MARK: - Components
-
-struct AttributeColumnView: View {
-    let attribute: AttributeType
-    let tags: [TaskTag]
-    let isActive: Bool
-    let onUnlink: (TaskTag) -> Void
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            VStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(attribute.color.opacity(isActive ? 0.3 : 0.1))
-                        .frame(width: 50, height: 50)
-                        .overlay(
-                            Circle()
-                                .stroke(attribute.color, lineWidth: isActive ? 2 : 0)
-                        )
-                    
-                    Image(systemName: attribute.icon)
-                        .font(.title3)
-                        .foregroundStyle(attribute.color)
-                        .symbolEffect(.bounce, value: isActive)
-                }
-                
-                Text(attribute.displayName)
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
-            }
-            
-            VStack(alignment: .leading, spacing: 8) {
-                if tags.isEmpty {
-                    Text("暂无绑定")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                } else {
-                    ForEach(tags) { tag in
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(Color(hex: tag.colorHex))
-                                .frame(width: 6, height: 6)
-                            
-                            Text(tag.name)
-                                .font(.caption)
-                                .lineLimit(1)
-                            
-                            Spacer(minLength: 4)
-                            
-                            Button {
-                                onUnlink(tag)
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 11, weight: .bold))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(.thinMaterial)
-                        .clipShape(Capsule())
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(12)
-        .frame(width: 160, alignment: .top)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.white.opacity(0.06))
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(attribute.color.opacity(isActive ? 0.7 : 0.25), lineWidth: isActive ? 2 : 1)
-        )
-        .scaleEffect(isActive ? 1.03 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isActive)
-    }
-}
-
-struct DraggableTagItem: View {
-    let tag: TaskTag
-    
-    var primaryAttribute: AttributeType? {
-        for link in tag.attributeLinks {
-            if let attr = AttributeType(rawValue: link.attributeKey) {
-                return attr
-            }
-        }
-        return nil
-    }
-    
-    var body: some View {
-        HStack(spacing: 6) {
-            // 如果已绑定，显示属性图标
-            if let attr = primaryAttribute {
-                Image(systemName: attr.icon)
-                    .font(.caption2)
-                    .foregroundStyle(attr.color)
-            } else {
-                Image(systemName: "number")
-                    .font(.caption2)
-                    .foregroundStyle(Color(hex: tag.colorHex))
-            }
-            
-            Text(tag.name)
-                .font(.caption)
-                .fontWeight(.medium)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(
-            Capsule()
-                .fill(backgroundColor)
-                .shadow(color: shadowColor, radius: 2, x: 0, y: 1)
-        )
-        .overlay(
-            Capsule()
-                .stroke(borderColor, lineWidth: 1)
-        )
-    }
-    
-    var backgroundColor: Color {
-        if let attr = primaryAttribute {
-            return attr.color.opacity(0.15)
-        }
-        return ThemeManager.shared.currentTheme.pageBackground
-    }
-    
-    var borderColor: Color {
-        if let attr = primaryAttribute {
-            return attr.color.opacity(0.5)
-        }
-        return Color(hex: tag.colorHex).opacity(0.3)
-    }
-    
-    var shadowColor: Color {
-        if let attr = primaryAttribute {
-            return attr.color.opacity(0.2)
-        }
-        return .black.opacity(0.05)
-    }
-}
 
 // 简单的编辑 Sheet (复用或新建)
 struct TagEditSheet: View {
@@ -400,21 +398,18 @@ struct TagEditSheet: View {
 
 struct TagGridCell: View {
     let tag: TaskTag
+    let isSelected: Bool
     @Binding var tagToEdit: TaskTag?
     @Binding var tagToDelete: TaskTag?
     @Binding var showDeleteAlert: Bool
     let hasAttributes: Bool
+    let onSelect: () -> Void
     let onUnlinkAll: () -> Void
     
     var body: some View {
-        DraggableTagItem(tag: tag)
-            .draggable(tag.id.uuidString) {
-                // 拖拽时的预览视图
-                Text(tag.name)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Capsule().fill(Color(hex: tag.colorHex)))
-                    .foregroundStyle(.white)
+        TagChipView(tag: tag, isSelected: isSelected, hasAttributes: hasAttributes)
+            .onTapGesture {
+                onSelect()
             }
             .contextMenu {
                 Button("编辑") { tagToEdit = tag }
@@ -426,10 +421,45 @@ struct TagGridCell: View {
                 }
                 // 解绑选项
                 if hasAttributes {
-                    Button("解绑属性", role: .destructive) {
+                    Button("解绑全部能力", role: .destructive) {
                         onUnlinkAll()
                     }
                 }
             }
+    }
+}
+
+/// 标签胶囊视图
+struct TagChipView: View {
+    let tag: TaskTag
+    let isSelected: Bool
+    let hasAttributes: Bool
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: hasAttributes ? "link.circle.fill" : "number")
+                .font(.caption2)
+                .foregroundStyle(hasAttributes ? ThemeManager.shared.currentTheme.p2 : Color(hex: tag.colorHex))
+            
+            Text(tag.name)
+                .font(.caption)
+                .fontWeight(.medium)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Capsule()
+                .fill(isSelected
+                      ? ThemeManager.shared.currentTheme.p2.opacity(0.15)
+                      : ThemeManager.shared.currentTheme.pageBackground)
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+        )
+        .overlay(
+            Capsule()
+                .stroke(isSelected
+                        ? ThemeManager.shared.currentTheme.p2.opacity(0.5)
+                        : Color(hex: tag.colorHex).opacity(0.3), lineWidth: 1)
+        )
     }
 }

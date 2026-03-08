@@ -1,16 +1,17 @@
+//
+//  StatsGrid.swift
+//  LifeOS
+//
+//  数据概览：紧凑水平排列（累计获得、完成任务）
+//
+
 import SwiftUI
 
 struct StatsGrid: View {
     let user: UserProfile
     
-    // Grid layout - 使用 2x2 布局
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
-    
     var body: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
+        HStack(spacing: 12) {
             // 1. Total Earned
             StatsMiniCard(
                 title: "累计获得",
@@ -28,26 +29,8 @@ struct StatsGrid: View {
                 icon: "checkmark.circle.fill",
                 color: .green
             )
-            
-            // 3. Days Active
-            StatsMiniCard(
-                title: "活跃天数",
-                value: "\(user.daysActive)",
-                unit: "天",
-                icon: "flame.fill",
-                color: .orange
-            )
-            
-            // 4. Unlocked Achievements
-            StatsMiniCard(
-                title: "解锁成就",
-                value: "\(user.unlockedAchievements.count)",
-                unit: "个",
-                icon: "trophy.fill",
-                color: .purple
-            )
         }
-        .padding(.horizontal, 24) // 增加水平边距，不贴边
+        .padding(.horizontal, 24)
     }
 }
 
@@ -86,7 +69,7 @@ struct StatsMiniCard: View {
             }
         }
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading) // 确保卡片填满 Grid
+        .frame(maxWidth: .infinity, alignment: .leading) // 确保卡片填满
         .background(
             ZStack {
                 // 1. 磨砂背景
@@ -108,7 +91,7 @@ struct StatsMiniCard: View {
                         lineWidth: 1
                     )
             }
-            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4) // 增加阴影使其立体
+            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
         )
     }
 }

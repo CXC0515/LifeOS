@@ -1035,7 +1035,7 @@ extension TaskService {
                 case .intellect: user.attrIntellect += change
                 case .strength:  user.attrStrength += change
                 case .charm:     user.attrCharm += change
-                case .wealth:    user.attrWealth += change
+                case .execution: user.attrExecution += change
                 case .creativity: user.attrCreativity += change
                 case .willpower: user.attrWillpower += change
                 }
@@ -1046,7 +1046,7 @@ extension TaskService {
         if user.attrIntellect < 0 { user.attrIntellect = 0 }
         if user.attrStrength < 0 { user.attrStrength = 0 }
         if user.attrCharm < 0 { user.attrCharm = 0 }
-        if user.attrWealth < 0 { user.attrWealth = 0 }
+        if user.attrExecution < 0 { user.attrExecution = 0 }
         if user.attrCreativity < 0 { user.attrCreativity = 0 }
         if user.attrWillpower < 0 { user.attrWillpower = 0 }
     }

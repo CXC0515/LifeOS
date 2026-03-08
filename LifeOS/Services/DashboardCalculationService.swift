@@ -55,28 +55,6 @@ struct DayTimePoint: Identifiable {
     let timeRatio: Double   // 时间在一天内的比例 (0.0-1.0)
 }
 
-/// 月视图渲染项：包含任务及其在月历中的布局信息
-struct MonthlyRenderItem: Identifiable {
-    let id: UUID
-    let task: TaskItem
-    
-    // 任务跨越的日期范围（在当前月内）
-    let startDate: Date  // 开始日期（月内）
-    let endDate: Date    // 结束日期（月内）
-    
-    // 网格位置
-    let startColumn: Int  // 开始列（0-6）
-    let startRow: Int     // 开始行（0-5）
-    let endColumn: Int    // 结束列（0-6）
-    let endRow: Int       // 结束行（0-5）
-    
-    // 显示属性
-    let priorityColor: Color  // 优先级颜色
-    let spansDays: Int        // 跨越天数
-    let needsWrap: Bool       // 是否需要换行（跨周）
-    let rowIndex: Int         // 在日期格子内的行索引
-}
-
 // MARK: - 核心计算服务
 /// 负责 Dashboard 的所有核心算法：布局重叠、数据聚合、路径生成
 /// 遵循 "Services only do logic, no UI" 原则
@@ -435,87 +413,6 @@ final class DashboardCalculationService {
         return renderItems
     }
     
-    // MARK: - 3. 月视图布局算法 (Monthly Layout)
-    
-    /// 计算月历网格中任务的位置和布局
-    /// - Parameters:
-    ///   - tasks: 当月的任务列表
-    ///   - monthDate: 月份中的任意日期
-    /// - Returns: 包含网格位置信息的月视图渲染项数组
-    func calculateMonthlyLayout(tasks: [TaskItem], monthDate: Date) -> [MonthlyRenderItem] {
-        let calendar = Calendar.current
-        var renderItems: [MonthlyRenderItem] = []
-        
-        // 1. 获取当月范围
-        guard let monthInterval = calendar.dateInterval(of: .month, for: monthDate) else {
-            return []
-        }
-        let monthStart = monthInterval.start
-        let monthEnd = monthInterval.end
-        
-        // 2. 计算月历网格起始日期（包含上月末尾和下月开头）
-        let firstWeekday = calendar.component(.weekday, from: monthStart)
-        let daysBeforeMonth = (firstWeekday - calendar.firstWeekday + 7) % 7
-        
-        guard let gridStart = calendar.date(byAdding: .day, value: -daysBeforeMonth, to: monthStart) else {
-            return []
-        }
-        
-        // 3. 为每个任务计算网格位置
-        for task in tasks {
-            guard let endTime = task.endTime else { continue }
-            
-            // 计算任务的起止日期
-            let taskStartDay = calendar.startOfDay(for: task.startTime)
-            let taskEndDay = calendar.startOfDay(for: endTime)
-            
-            // 限制到当月范围内
-            let displayStart = max(taskStartDay, monthStart)
-            let displayEnd = min(taskEndDay, calendar.date(byAdding: .day, value: -1, to: monthEnd) ?? taskEndDay)
-            
-            // 计算网格位置
-            let startDayOffset = calendar.dateComponents([.day], from: gridStart, to: displayStart).day ?? 0
-            let endDayOffset = calendar.dateComponents([.day], from: gridStart, to: displayEnd).day ?? 0
-            
-            let startRow = startDayOffset / 7
-            let startColumn = startDayOffset % 7
-            let endRow = endDayOffset / 7
-            let endColumn = endDayOffset % 7
-            
-            // 计算跨度
-            let spansDays = calendar.dateComponents([.day], from: displayStart, to: displayEnd).day ?? 0 + 1
-            let needsWrap = startRow != endRow  // 是否跨周
-            
-            // 获取优先级颜色
-            let priorityColor: Color = {
-                switch task.priority.rawValue {
-                case 0: return ThemeManager.shared.currentTheme.p0
-                case 1: return ThemeManager.shared.currentTheme.p1
-                case 2: return ThemeManager.shared.currentTheme.p2
-                case 3: return ThemeManager.shared.currentTheme.p3
-                default: return .gray
-                }
-            }()
-            
-            renderItems.append(MonthlyRenderItem(
-                id: task.id,
-                task: task,
-                startDate: displayStart,
-                endDate: displayEnd,
-                startColumn: startColumn,
-                startRow: startRow,
-                endColumn: endColumn,
-                endRow: endRow,
-                priorityColor: priorityColor,
-                spansDays: spansDays,
-                needsWrap: needsWrap,
-                rowIndex: 0  // 将在渲染时动态计算
-            ))
-        }
-        
-        return renderItems
-    }
-    
     // MARK: - 4. 动态雷达图聚合 (Dynamic Radar Aggregation)
     
     /// 根据任务标签动态聚合六维能力值
@@ -527,7 +424,7 @@ final class DashboardCalculationService {
             .intellect: 0,
             .strength: 0,
             .charm: 0,
-            .wealth: 0,
+            .execution: 0,
             .creativity: 0,
             .willpower: 0
         ]
@@ -580,7 +477,7 @@ final class DashboardCalculationService {
     /// 辅助：将系统分类 Key 映射到属性
     private func mapSystemKeyToAttribute(_ key: String) -> AttributeType {
         switch key.lowercased() {
-        case "work", "career": return .wealth
+        case "work", "career": return .execution
         case "study", "learn": return .intellect
         case "workout", "health": return .strength
         case "social", "family": return .charm

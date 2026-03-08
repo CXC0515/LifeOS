@@ -48,16 +48,7 @@ struct HomeView: View {
         return userProfiles.first?.nickname ?? "程同学"
     }
     
-    // 计算属性：当前成就
-    var currentAchievement: String {
-        return userProfiles.first?.selectedAchievement ?? "才高八斗"
-    }
-    
-    // 计算属性：当前等级
-    var currentLevel: Int {
-        return userProfiles.first?.level ?? 1
-    }
-    
+
     // 过滤后的任务列表 (基础过滤：分类 + 可见性)
     var filteredTasks: [TaskItem] {
         tasks.filter { task in
@@ -261,35 +252,6 @@ struct HomeView: View {
             }
             
             Spacer()
-            
-            // 3. 右侧：等级 + 称号
-            VStack(alignment: .trailing, spacing: 4) {
-                // 等级
-                Text("Lv.\(currentLevel)")
-                    .font(.system(size: 12, weight: .black))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.yellow))
-                    .foregroundStyle(.black)
-                    .shadow(color: .yellow.opacity(0.3), radius: 4, x: 0, y: 2)
-                
-                // 称号
-                HStack(spacing: 6) {
-                    Image(systemName: "medal.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                    Text(currentAchievement)
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(.ultraThinMaterial))
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
-                )
-            }
         }
         .padding(.horizontal)
     }

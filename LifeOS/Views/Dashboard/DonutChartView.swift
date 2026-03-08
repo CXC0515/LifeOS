@@ -14,72 +14,74 @@ struct DonutChartView: View {
     @ObservedObject var theme = ThemeManager.shared
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 10) {
+            // 标题
             Text(title)
-                .font(.headline)
+                .font(.caption.bold())
                 .foregroundStyle(.secondary)
-                .padding(.horizontal)
+                .padding(.horizontal, 14)
             
-            HStack {
-                // 1. 图表部分
-                Chart(segments) { segment in
-                    SectorMark(
-                        angle: .value("Value", segment.value),
-                        innerRadius: .ratio(0.6),
-                        angularInset: 1.5 // 扇区间隙
-                    )
-                    .cornerRadius(4)
-                    .foregroundStyle(segment.color)
-                }
-                .frame(height: 180)
-                .chartBackground { proxy in
-                    // 中心显示总数
-                    GeometryReader { geometry in
-                        if let plotFrame = proxy.plotFrame {
-                            let frame = geometry[plotFrame]
-                            VStack(spacing: 0) {
-                                Text("\(Int(totalValue))")
-                                    .font(.title2.bold())
-                                    .foregroundStyle(theme.currentTheme.p1)
-                                Text("Total")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .position(x: frame.midX, y: frame.midY)
-                        }
-                    }
-                }
-                
-                // 2. 图例部分 (右侧)
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(segments.prefix(5)) { segment in
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(segment.color)
-                                .frame(width: 8, height: 8)
-                            
-                            Text(segment.name)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                            
-                            Spacer()
-                            
-                            Text("\(Int(segment.value))")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                .frame(width: 100) // 固定宽度给图例
+            // 圆环图
+            Chart(segments) { segment in
+                SectorMark(
+                    angle: .value("Value", segment.value),
+                    innerRadius: .ratio(0.65),
+                    angularInset: 1.5
+                )
+                .cornerRadius(3)
+                .foregroundStyle(segment.color)
             }
-            .padding(.horizontal)
+            .frame(height: 120)
+            .chartBackground { proxy in
+                // 中心总数
+                GeometryReader { geometry in
+                    if let plotFrame = proxy.plotFrame {
+                        let frame = geometry[plotFrame]
+                        VStack(spacing: 0) {
+                            Text("\(Int(totalValue))")
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundStyle(theme.currentTheme.p1)
+                            Text("任务")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .position(x: frame.midX, y: frame.midY)
+                    }
+                }
+            }
+            
+            // 紧凑图例
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(segments.prefix(4)) { segment in
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(segment.color)
+                            .frame(width: 6, height: 6)
+                        
+                        Text(segment.name)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        
+                        Spacer(minLength: 0)
+                        
+                        Text("\(Int(segment.value))")
+                            .font(.system(size: 10, weight: .medium).monospacedDigit())
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
         }
-        .padding(.vertical)
+        .padding(.vertical, 14)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(theme.currentTheme.pageBackground)
-                .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 18)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
         )
     }
     
